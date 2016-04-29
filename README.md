@@ -31,6 +31,8 @@ Walle will stop your program before it starts if the environment for any of the 
 ### Pros
   - You don't have to modify your code at all to use him
   - Walle runs before any of your code, so he can stop things before any harm is done
+  - Only needs to run where cross environments are likely to happen - ie. developer machines
+  - Works wth tomcat or main classes
 
 ### Cons
   - You have to remember to enable the Walle Agent or he does nothing

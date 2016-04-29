@@ -1,8 +1,15 @@
 package com.octanner;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 
@@ -59,36 +66,74 @@ public class Walle
     public static void premain(String options, Instrumentation instrumentation){
         Walle walle = new Walle();
         System.out.println(PREFIX + "I'm on the job!");
-        String propetyEnv = walle.getEnvFromProperty();
-        System.out.println(PREFIX + "You have the " + propetyEnv + " environment config jar");
+        String propertyEnv = walle.getPropertyEnv();
+
+        System.out.println(PREFIX + "You have the " + propertyEnv + " environment config jar");
 
         if (optEnabled(options, VERBOSE)) {
             printEnvironment();
         }
 
         boolean match = true;
-        for (Map.Entry<String, String> entry : environments.get(propetyEnv).entrySet()) {
+        for (Map.Entry<String, String> entry : environments.get(propertyEnv).entrySet()) {
             match &= environmentContains(entry);
         }
 
         if (match == false && !optEnabled(options, WARN) ) {
-            System.err.println(PREFIX + "Shutting down..");
+            System.err.println(PREFIX + "Shutting down...");
             System.exit(1);
         }
+    }
+
+    private String getPropertyEnv() {
+        String propertyEnv = getEnvFromProperty(getClass().getClassLoader());
+        if (propertyEnv == null) {
+            try {
+                propertyEnv = getEnvFromProperty(createTomcatConfigClassLoader());
+            } catch (MalformedURLException e ) {
+                e.printStackTrace();
+            }
+        }
+        return propertyEnv;
     }
 
     private static boolean optEnabled(final String options, final String substring) {
         return options != null && options.toLowerCase().contains(substring);
     }
-    private String getEnvFromProperty() {
+
+    private String getEnvFromProperty(ClassLoader classLoader) {
         Properties props = new Properties();
-        InputStream input = getClass().getClassLoader().getResourceAsStream(OCTPROPERTIES_PROPERTIES);
+        InputStream input = classLoader.getResourceAsStream(OCTPROPERTIES_PROPERTIES);
         try {
             props.load(input);
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (NullPointerException e) {
         }
-        return props.getProperty(DATABASE_NAME).toLowerCase();
+        return props.getProperty(DATABASE_NAME) == null ?
+                null :
+                props.getProperty(DATABASE_NAME).toLowerCase();
+    }
+
+    private ClassLoader createTomcatConfigClassLoader() throws MalformedURLException {
+        String currentDirectory = Paths.get("").toFile().getAbsolutePath();
+
+        Path libFolder = Paths.get("..", "lib");
+        System.out.println(PREFIX + "Looking for 'configuration' files under " + libFolder.toFile().getAbsolutePath());
+        String[] configJars = libFolder.toFile().list(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.contains("configuration");
+            }
+        });
+
+        URL[] configJarUrls = new URL[configJars.length];
+        for (int i = 0; i < configJars.length; i++) {
+            URL url = new URL("file:///" + currentDirectory + "/../lib/" + configJars[i]);
+            System.out.println(PREFIX + "loading " + url);
+            configJarUrls[i] = url;
+        }
+        ClassLoader classLoader = new URLClassLoader(configJarUrls, getClass().getClassLoader());
+        return classLoader;
     }
 
     private static Map<String, String> map(final String ... entries) {
