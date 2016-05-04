@@ -49,7 +49,7 @@ public class Walle
                         OCT_VAULT_DB_ORCH_LOCATION,"opsdev",
                         OCT_VAULT_DB_REPORTS_LOCATION,"rptdv1",
                         OCT_VAULT_QUEUE_XICA_LOCATION, "sdlpi1",
-                        OCT_VAULT_SAP_CA_LOCATION, "sdlqa1"
+                        OCT_VAULT_SAP_CA_LOCATION, "sdldv1"
                 ));
         put("tlit",
                 map(
